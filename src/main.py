@@ -30,14 +30,42 @@ def handle_invalid_usage(error):
 def sitemap():
     return generate_sitemap(app)
 
-@app.route('/user', methods=['GET'])
-def handle_hello():
-
-    response_body = {
-        "msg": "Hello, this is your GET /user response "
-    }
-
-    return jsonify(response_body), 200
+@app.route("/ingresar", methods=["POST"])
+def manejar_ingreso():
+    """
+        POST: revisamos si el usuario existe. Si existe, revisamos
+        si el password que envía es correcto. ¿Cómo sabemos si el 
+        usuario existe? Aquí vamos a recibir en el request un diccionario
+        con cédula y password.
+    """
+    input_data = request.json
+    if (
+        "cedula" not in input_data or
+        "password" not in input_data    
+    ):
+        return jsonify({
+            "resultado": "Lo siento, persona, envíe los insumos correctos..."
+        }), 400
+    else:
+        usuario = Donante.query.filter_by(
+            cedula=input_data["cedula"]
+        ).one_or_none()
+        if usuario is None:
+            return jsonify({
+                "resultado": "En verdad el usuario no existe, pero le voy a decir que el password no es válido"
+            }), 400
+        else:
+            if usuario.check_password(input_data["password"]):
+                # success
+                token = create_jwt(identity=usuario.id)
+                return jsonify({
+                    "token": token,
+                    "cedula": usuario.cedula
+                }), 200
+            else:
+                return jsonify({
+                    "resultado": "El usuario sí existe y el password no sirve..."
+                }), 400
 
 # this only runs if `$ python src/main.py` is executed
 if __name__ == '__main__':
